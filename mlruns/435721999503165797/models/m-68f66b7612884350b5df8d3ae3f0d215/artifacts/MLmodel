@@ -1,0 +1,45 @@
+artifact_path: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/models/m-68f66b7612884350b5df8d3ae3f0d215/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.6
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+is_signature_from_type_hint: false
+mlflow_version: 3.5.1
+model_id: m-68f66b7612884350b5df8d3ae3f0d215
+model_size_bytes: 6610
+model_uuid: m-68f66b7612884350b5df8d3ae3f0d215
+prompts: null
+run_id: 30c738b0eef5419c9eacc67916f107e1
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "Age", "required": true}, {"type": "double",
+    "name": "ENQ_3M", "required": true}, {"type": "double", "name": "NUM_CC_NON_BANK",
+    "required": true}, {"type": "double", "name": "NUM_NEW_LOAN_12M", "required":
+    true}, {"type": "double", "name": "MID_TERM_COUNT_NON_BANK", "required": true},
+    {"type": "double", "name": "NUM_NEW_LOAN_6M", "required": true}, {"type": "double",
+    "name": "OUTS_BAL_LOAN_M1", "required": true}, {"type": "double", "name": "LONG_TERM_AMOUNT",
+    "required": true}, {"type": "double", "name": "ENQ_9M", "required": true}, {"type":
+    "double", "name": "NUM_CC_BANK", "required": true}, {"type": "double", "name":
+    "NUM_NEW_LOAN_3M", "required": true}, {"type": "string", "name": "occupation",
+    "required": true}, {"type": "string", "name": "gender", "required": true}, {"type":
+    "string", "name": "operating_system", "required": true}, {"type": "string", "name":
+    "phone_provider", "required": true}, {"type": "any", "name": "has_group2_debt_12m",
+    "required": false}]'
+  outputs: '[{"type": "long", "name": "FPD10+", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-11-19 14:08:59.197591'

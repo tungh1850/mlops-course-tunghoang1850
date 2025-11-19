@@ -1,0 +1,14 @@
+artifact_uri: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/e6e13a68dc954c2a8bb77a35b0d91a86/artifacts
+end_time: 1763563184517
+entry_point_name: ''
+experiment_id: '435721999503165797'
+lifecycle_stage: active
+run_id: e6e13a68dc954c2a8bb77a35b0d91a86
+run_name: credit_score_model_run_v1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763563182361
+status: 3
+tags: []
+user_id: tungh1850

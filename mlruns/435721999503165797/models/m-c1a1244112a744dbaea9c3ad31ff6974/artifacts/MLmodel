@@ -1,0 +1,22 @@
+artifact_path: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/models/m-c1a1244112a744dbaea9c3ad31ff6974/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.6
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+mlflow_version: 3.5.1
+model_id: m-c1a1244112a744dbaea9c3ad31ff6974
+model_size_bytes: 4341
+model_uuid: m-c1a1244112a744dbaea9c3ad31ff6974
+prompts: null
+run_id: 0f8872a40cff4519a42c2b76e49e7e97
+utc_time_created: '2025-11-19 13:56:24.139749'

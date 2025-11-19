@@ -1,0 +1,10 @@
+artifact_location: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/models/m-9285e2154e4b42c8bc46ec359b08dd00/artifacts
+creation_timestamp: 1763563182722
+experiment_id: '435721999503165797'
+last_updated_timestamp: 1763563184514
+model_id: m-9285e2154e4b42c8bc46ec359b08dd00
+model_type: null
+name: model
+source_run_id: e6e13a68dc954c2a8bb77a35b0d91a86
+status: 2
+status_message: null

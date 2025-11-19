@@ -1,0 +1,15 @@
+creation_timestamp: 1763563918303
+current_stage: None
+deployment_job_state: null
+description: ''
+last_updated_timestamp: 1763563918303
+model_id: m-b7bfa846940f426cbc242945e280e93b
+name: credit_risk_fpd10+
+run_id: 98b596027cac4e39b34e69b969a20d0b
+run_link: ''
+source: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/models/m-b7bfa846940f426cbc242945e280e93b/artifacts
+status: READY
+status_message: null
+storage_location: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/models/m-b7bfa846940f426cbc242945e280e93b/artifacts
+user_id: null
+version: 1

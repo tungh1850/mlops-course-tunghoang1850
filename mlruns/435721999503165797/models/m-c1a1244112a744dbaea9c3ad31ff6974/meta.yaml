@@ -1,0 +1,10 @@
+artifact_location: file:///home/tungh1850/learning/mls_ops/tnex/mlruns/435721999503165797/models/m-c1a1244112a744dbaea9c3ad31ff6974/artifacts
+creation_timestamp: 1763560584129
+experiment_id: '435721999503165797'
+last_updated_timestamp: 1763560585925
+model_id: m-c1a1244112a744dbaea9c3ad31ff6974
+model_type: null
+name: credit_score_model
+source_run_id: 0f8872a40cff4519a42c2b76e49e7e97
+status: 2
+status_message: null

@@ -1,6 +1,0 @@
-artifact_location: file:///home/hoangtung/mlops/mlops_project/mlops-course-tunghoang1850/mlruns/256655596308063680
-creation_time: 1763542154248
-experiment_id: '256655596308063680'
-last_update_time: 1763542154248
-lifecycle_stage: active
-name: credit_score_model_experiment
