@@ -9,6 +9,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import sklearn
 from mlflow.models import infer_signature
 from score_function import (
     calculate_profit,
@@ -40,11 +41,13 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 
+EXPERIMENT_NAME = "credit_score_model_experiment_v3"
 logger = logging.getLogger("credit_score_model_training")
+sklearn.set_config(transform_output="pandas")
 
 
 def train() -> None:
-    mlflow.set_experiment("credit_score_model_experiment")
+    mlflow.set_experiment(EXPERIMENT_NAME)
     PROJECT_ROOT = Path(os.getcwd())
     DATA_PATH = PROJECT_ROOT / "data" / "facts_dataset.csv"
     ARTIFACT_DIR = PROJECT_ROOT / "scripts" / "credit_score_model" / "artifacts"
@@ -93,6 +96,7 @@ def train() -> None:
         for col in feature_cols
         if col in df_final.select_dtypes(include=[np.number]).columns
     ]
+    df_final[NUM_FEATURES] = df_final[NUM_FEATURES].astype(float)
     CAT_FEATURES = [col for col in feature_cols if col not in NUM_FEATURES]
     X = df_final[NUM_FEATURES + CAT_FEATURES]
     y = df_final[TARGET]
@@ -164,8 +168,10 @@ def train() -> None:
         with open(ARTIFACT_DIR / "classification_report.txt", "w") as f:
             f.write(metrics_report)
         logger.info(f"Classification Report:\n{metrics_report}")
+
         cm = confusion_matrix(y_test, y_pred)
         logger.info(f"Confusion Matrix:\n{cm}")
+
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
         plt.xlabel("Predicted")
         plt.ylabel("Actual")
@@ -188,7 +194,6 @@ def train() -> None:
 
         # 1. Calculate the curve points
         precision, recall, thresholds = precision_recall_curve(y_test, y_proba)
-
         # 2. Calculate F1-Score for every single threshold point
         # Note: We add a small epsilon (1e-10) to avoid division by zero
         f1_scores = 2 * (precision * recall) / (precision + recall + 1e-10)
@@ -208,30 +213,34 @@ def train() -> None:
         y_prob_train = pipeline.predict_proba(X_train)[:, 1]
         transfomer = pipeline.named_steps["preprocessor"]
         transfomer.set_output(transform="pandas")
-        X_train_preprocessed = transfomer.transform(X_train)
-        X_test_preprocessed = transfomer.transform(X_test)
         # compute for train and test (uses existing y_train, y_prob_train, y_test, y_proba / y_prob_test)
         _gini_train = gini_from_auc(y_train, y_prob_train)
         _gini_test = gini_from_auc(y_test, y_proba)
         # Compute PSI between training and test preprocessed feature sets
 
-        psi_df = calculate_psi_dataframe(
-            X_train_preprocessed, X_test_preprocessed, bins=10
+        _psi_df = calculate_psi_dataframe(
+            transfomer.transform(X_train), transfomer.transform(X_test), bins=10
         )
         # Summary metrics
-        _total_psi = psi_df["psi"].sum()
-        _mean_psi = psi_df["psi"].mean()
+        _total_psi = _psi_df["psi"].sum()
+        _mean_psi = _psi_df["psi"].mean()
         logger.info(f"Gini Train: {_gini_train:.4f} | Gini Test: {_gini_test:.4f}")
         logger.info(f"Total PSI: {_total_psi:.4f} | Mean PSI: {_mean_psi:.4f}")
+
         # Calculate profit metrics
         final_predictions = (y_proba >= best_threshold).astype(int)
         default_profit = calculate_profit(y_test, y_pred, costs)
         optimized_profit = calculate_profit(y_test, final_predictions, costs)
         diff = optimized_profit - default_profit
 
-        sample_train = X_train.head().copy()
-        num_cols = sample_train.select_dtypes(include=[np.number]).columns
-        sample_train[num_cols] = sample_train[num_cols].astype(float)
+        feature_names = pipeline.named_steps["preprocessor"].get_feature_names_out()
+        coefficients = pipeline.named_steps["logreg"].coef_[0]
+        importance_map = pd.DataFrame(
+            {"feature": feature_names, "coefficient": coefficients}
+        )
+        logger.info(
+            f"Feature Importance:\n{importance_map.sort_values(by='coefficient', ascending=False)}"
+        )
 
         mlflow.log_metric("gini_train", _gini_train)
         mlflow.log_metric("total_psi", _total_psi)
@@ -247,6 +256,9 @@ def train() -> None:
         mlflow.log_metric("recall", _recall)
         mlflow.log_metric("f1_score", _f1)
         mlflow.log_metric("auc_pr", auc_pr)
+        mlflow.log_table(data=_psi_df, artifact_file="psi_dataframe.json")
+        mlflow.log_table(data=importance_map, artifact_file="feature_importance.json")
+        mlflow.log_artifact(ARTIFACT_DIR / "classification_report.txt")
         mlflow.log_artifact(ARTIFACT_DIR / "precision_recall_curve.png")
         mlflow.log_artifact(ARTIFACT_DIR / "classification_report.txt")
         mlflow.log_artifact(ARTIFACT_DIR / "confusion_matrix.png")
@@ -258,7 +270,7 @@ def train() -> None:
         mlflow.sklearn.log_model(
             pipeline,
             name="model",
-            signature=infer_signature(sample_train, y_train),
+            signature=infer_signature(X_train, y_train),
             input_example=X_train.head(),
         )
         joblib.dump(pipeline, MODEL_PATH)
