@@ -1,6 +1,7 @@
 # LOAD LIBRARIES
 import json
 import logging
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -348,7 +349,7 @@ def calculate_profit(y_true, y_pred, costs):
 
 def train() -> None:
     mlflow.set_experiment("credit_score_model_experiment")
-    PROJECT_ROOT = Path("..")
+    PROJECT_ROOT = Path(os.getcwd())
     DATA_PATH = PROJECT_ROOT / "data" / "facts_dataset.csv"
     ARTIFACT_DIR = PROJECT_ROOT / "scripts" / "credit_score_model" / "artifacts"
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -501,3 +502,7 @@ def train() -> None:
             optimized_profit,
             diff,
         )
+
+
+if __name__ == "__main__":
+    train()
