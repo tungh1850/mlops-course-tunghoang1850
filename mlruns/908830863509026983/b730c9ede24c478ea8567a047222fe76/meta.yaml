@@ -1,0 +1,14 @@
+artifact_uri: file:///home/hoangtung/mlops/mlops_project/mlops-course-tunghoang1850/mlruns/908830863509026983/b730c9ede24c478ea8567a047222fe76/artifacts
+end_time: 1763615032226
+entry_point_name: ''
+experiment_id: '908830863509026983'
+lifecycle_stage: active
+run_id: b730c9ede24c478ea8567a047222fe76
+run_name: credit_risk_model_v4
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763615028200
+status: 3
+tags: []
+user_id: hoangtung

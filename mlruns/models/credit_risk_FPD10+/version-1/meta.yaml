@@ -1,0 +1,15 @@
+creation_timestamp: 1763615348816
+current_stage: None
+deployment_job_state: null
+description: ''
+last_updated_timestamp: 1763615348816
+model_id: m-a5906d8b3461432f9b3538a88ce6716f
+name: credit_risk_FPD10+
+run_id: b730c9ede24c478ea8567a047222fe76
+run_link: ''
+source: file:///home/hoangtung/mlops/mlops_project/mlops-course-tunghoang1850/mlruns/908830863509026983/models/m-a5906d8b3461432f9b3538a88ce6716f/artifacts
+status: READY
+status_message: null
+storage_location: file:///home/hoangtung/mlops/mlops_project/mlops-course-tunghoang1850/mlruns/908830863509026983/models/m-a5906d8b3461432f9b3538a88ce6716f/artifacts
+user_id: null
+version: 1

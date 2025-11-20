@@ -1,7 +1,9 @@
 import mlflow.sklearn
 import pandas as pd
+import sklearn
 
-model_name = "credit_risk_fpd10+"
+sklearn.set_config(transform_output="pandas")
+model_name = "credit_risk_FPD10+"
 model_version = "1"
 model_uri = f"models:/{model_name}/{model_version}"
 model = mlflow.sklearn.load_model(model_uri)

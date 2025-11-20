@@ -1,0 +1,10 @@
+artifact_location: file:///home/hoangtung/mlops/mlops_project/mlops-course-tunghoang1850/mlruns/908830863509026983/models/m-d2f446797b984f84804c503a4b200c38/artifacts
+creation_timestamp: 1763614971820
+experiment_id: '908830863509026983'
+last_updated_timestamp: 1763614975071
+model_id: m-d2f446797b984f84804c503a4b200c38
+model_type: null
+name: model
+source_run_id: 3491da7485674121821ad5f44201d5d5
+status: 2
+status_message: null
