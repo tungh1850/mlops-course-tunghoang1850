@@ -42,10 +42,17 @@ logging.basicConfig(
 logger = logging.getLogger("credit_score_model_training")
 
 
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5050")
+
+mlflow.set_tracking_uri(uri=MLFLOW_TRACKING_URI)
+
+
 # MODEL CONFIG
 class ModelConfig(BaseModel):
-    experiment_name: str = "credit_score_model_experiment_v4"
+    experiment_name: str = "credit_score_model_experiment_v1"
     run_name: str = "credit_risk_model_v4"
+
+    model_name: str = "credit_risk_FPD10_plus"
 
     # model Parameters
     random_state: int = 42
@@ -153,19 +160,17 @@ def building_pipeline(
         verbose_feature_names_out=True,
     )
 
+    model_params = {
+        "penalty": config.penalty,
+        "class_weight": config.class_weight,
+        "solver": config.solver,
+        "random_state": config.random_state,
+    }
     # Create the full pipeline
     pipeline = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
-            (
-                "logreg",
-                LogisticRegression(
-                    penalty=config.penalty,
-                    class_weight=config.class_weight,
-                    solver=config.solver,
-                    random_state=config.random_state,
-                ),
-            ),
+            ("logreg", LogisticRegression(**model_params)),
         ]
     )
 
@@ -333,11 +338,29 @@ def train_model() -> None:
         # 2. Check the Target (This is likely the 'culprit')
         logging.info(f"Target Type: {y_train.dtype}")
 
-        mlflow.sklearn.log_model(
-            pipeline,
-            name="model",
-            input_example=X_train.iloc[:5],
-        )
+        try:
+            mlflow.sklearn.log_model(
+                pipeline,
+                artifact_path="model",
+                registered_model_name=config.model_name,
+                input_example=X_train.iloc[:5],
+            )
+
+            # Log and report the registered model version(s)
+
+            client = mlflow.tracking.MlflowClient()
+            try:
+                versions = client.get_latest_versions(name=config.model_name)
+                ver_list = [v.version for v in versions]
+                logger.info(
+                    f"Model registered under name '{config.model_name}' with versions: {ver_list}"
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to fetch registered model versions after registration"
+                )
+        except Exception:
+            logger.exception("Failed to log and register the model")
         joblib.dump(pipeline, paths["model"])
         mlflow.log_artifact(str(paths["model"]), "artifacts")
         mlflow.log_artifact(str(paths["data"]), "data")

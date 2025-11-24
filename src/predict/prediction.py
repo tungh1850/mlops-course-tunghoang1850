@@ -3,9 +3,10 @@ import pandas as pd
 import sklearn
 
 sklearn.set_config(transform_output="pandas")
-model_name = "credit_risk_FPD10+"
-model_version = "1"
-model_uri = f"models:/{model_name}/{model_version}"
+model_name = "credit_risk_FPD10_plus"
+alias = "production"
+model_uri = f"models:/{model_name}/{alias}"
+print(f"Loading model: {model_uri}")
 model = mlflow.sklearn.load_model(model_uri)
 
 """

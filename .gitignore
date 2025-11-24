@@ -2,3 +2,4 @@
 .venv_mlops
 notebooks/TNEX.ipynb
 data/
+.env
