@@ -4,6 +4,7 @@ import mlflow.sklearn
 import pandas as pd
 import sklearn
 from fastapi import APIRouter
+from mlflow.tracking import MlflowClient
 
 from src.schemas.request import PredictionRequest
 from src.schemas.response import PredictionResponse
@@ -13,10 +14,19 @@ print(f"MLFLOW_TRACKING_URI: {MLFLOW_TRACKING_URI}")
 
 mlflow.set_tracking_uri(uri=MLFLOW_TRACKING_URI)
 sklearn.set_config(transform_output="pandas")
+
+# Model configuration
 model_name = "credit_risk_FPD10_plus"
-version = "6"
+version = "3"
 model_uri = f"models:/{model_name}/{version}"
+
+# Load model and get metadata
 model = mlflow.sklearn.load_model(model_uri)
+client = MlflowClient()
+model_version_details = client.get_model_version(name=model_name, version=version)
+model_run_id = model_version_details.run_id
+
+print(f"Loaded model: {model_name} v{version} (run_id: {model_run_id})")
 
 router = APIRouter(prefix="/credit_risk")
 
@@ -43,4 +53,9 @@ def predict(request: PredictionRequest) -> PredictionResponse:
     }
     df = pd.DataFrame([input_data])
     probability = model.predict_proba(df)[:, 1][0]
-    return PredictionResponse(FPD10_plus_probability=probability)
+    return PredictionResponse(
+        FPD10_plus_probability=probability,
+        model_name=model_name,
+        model_version=version,
+        model_run_id=model_run_id,
+    )

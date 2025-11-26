@@ -49,8 +49,8 @@ mlflow.set_tracking_uri(uri=MLFLOW_TRACKING_URI)
 
 # MODEL CONFIG
 class ModelConfig(BaseModel):
-    experiment_name: str = "credit_score_model_experiment_v1"
-    run_name: str = "credit_risk_model_v4"
+    experiment_name: str = "credit_score_model_experiment_v2"
+    run_name: str = "credit_risk_model_v5"
 
     model_name: str = "credit_risk_FPD10_plus"
 
