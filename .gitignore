@@ -3,3 +3,33 @@
 notebooks/TNEX.ipynb
 data/
 .env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+scr/__pycache__/
+src/router/__pycache__/
+src/services/__pycache__/
+src/models/__pycache__/
+src/utils/__pycache__/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
