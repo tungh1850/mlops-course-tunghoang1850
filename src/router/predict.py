@@ -20,19 +20,27 @@ model_name = "credit_risk_FPD10_plus"
 version = "3"
 model_uri = f"models:/{model_name}/{version}"
 
-# Load model and get metadata
-model = mlflow.sklearn.load_model(model_uri)
-client = MlflowClient()
-model_version_details = client.get_model_version(name=model_name, version=version)
-model_run_id = model_version_details.run_id
-
-print(f"Loaded model: {model_name} v{version} (run_id: {model_run_id})")
-
 router = APIRouter(prefix="/credit_risk")
+
+
+# Load model and get metadata
+def get_model():
+    global _model
+    global _client
+    if _model is None:
+        _model = mlflow.sklearn.load_model(model_uri)
+        _client = MlflowClient()
+        model_version_details = _client.get_model_version(
+            name=model_name, version=version
+        )
+        model_run_id = model_version_details.run_id
+        print(f"Loaded model: {model_name} v{version} (run_id: {model_run_id})")
+    return _model, model_run_id
 
 
 @router.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest) -> PredictionResponse:
+    model, model_run_id = get_model()
     input_data = {
         "Age": request.Age,
         "occupation": request.occupation.value,
