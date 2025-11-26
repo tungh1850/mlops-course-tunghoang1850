@@ -7,6 +7,7 @@ app = FastAPI()
 app.include_router(router)
 
 
+# set root endpoint
 @app.get("/")
 def root() -> dict:
     return {"message": "Credit Risk Prediction API is running."}
