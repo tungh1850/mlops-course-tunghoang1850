@@ -81,7 +81,7 @@ def test_predict_endpoint(mock_mlflow_server, mock_mlflow_client, mock_model):
         app = FastAPI()
         app.include_router(router)
         client = TestClient(app)
-
+        # response body
         response = client.post(
             "/credit_risk/predict",
             json={
