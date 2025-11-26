@@ -13,4 +13,10 @@ pytest==8.4.2
 pytest-cov==7.0.0
 seaborn
 joblib
+fastapi
+uvicorn
 python-dotenv
+pytest
+httpx
+pytest
+pytest-cov
