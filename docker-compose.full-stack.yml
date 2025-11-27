@@ -21,19 +21,32 @@ services:
     networks:
       - mlops
 
+  create-buckets:
+    image: minio/mc:latest
+    container_name: create-minio-buckets
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c '
+        mc alias set myminio http://${MINIO_HOST:-minio}:${MINIO_PORT} \
+          ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+        mc mb --ignore-existing myminio/${MINIO_BUCKET_DVC:-dvc-storage} &&
+        mc mb --ignore-existing myminio/${MINIO_BUCKET_MLFLOW:-mlflow-artifacts}
+      '
+    restart: "no"
+    networks:
+      - mlops
+
   # ============ Airflow Infrastructure ============
   airflow-postgres:
-    image: postgres:13
+    image: postgres:15
     environment:
       POSTGRES_USER: ${AIRFLOW_POSTGRES_USER}
       POSTGRES_PASSWORD: ${AIRFLOW_POSTGRES_PASSWORD}
       POSTGRES_DB: ${AIRFLOW_POSTGRES_DB}
     volumes:
       - airflow_db:/var/lib/postgresql/data
-    # Optional: Expose port for debugging with external tools (pgAdmin, DBeaver, etc.)
-    # Uncomment the next 2 lines if you need to connect from host machine
-    # ports:
-    #   - "${AIRFLOW_POSTGRES_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${AIRFLOW_POSTGRES_USER}"]
       interval: 5s
@@ -154,17 +167,13 @@ services:
 
   # ============ MLflow Server ============
   mlflow-postgres:
-    image: postgres:13
+    image: postgres:15
     environment:
-      POSTGRES_USER: ${MLFLOW_POSTGRES_USER:-mlflow}
-      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD:-mlflow}
-      POSTGRES_DB: ${MLFLOW_POSTGRES_DB:-mlflow}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
     volumes:
       - mlflow_db:/var/lib/postgresql/data
-    # Optional: Expose port for debugging with external tools (pgAdmin, DBeaver, etc.)
-    # Uncomment the next 2 lines if you need to connect from host machine
-    # ports:
-    #   - "${MLFLOW_POSTGRES_PORT:-5434}:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${MLFLOW_POSTGRES_USER:-mlflow}"]
       interval: 5s
@@ -173,12 +182,16 @@ services:
       - mlops
 
   mlflow-server:
-    image: ghcr.io/mlflow/mlflow:v2.8.0
+    image: ghcr.io/mlflow/mlflow:${MLFLOW_VERSION}
     ports:
-      - "5000:5000"
+      - "${MLFLOW_PORT}:${MLFLOW_PORT}"
     depends_on:
-      - mlflow-postgres
-      - minio
+      mlflow-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      create-buckets:
+        condition: service_completed_successfully
     command: >
       mlflow server
       --host 0.0.0.0
