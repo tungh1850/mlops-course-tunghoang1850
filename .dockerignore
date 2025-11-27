@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv*
+.venv_ml
+.venv_mlops
+
+# DVC
+.dvc/cache
+.dvc/tmp
+
+# Data
+data/facts_dataset.csv
+data/facts_dataset_backup.csv
+
+# Logs
+logs/
+*.log
+
+# Airflow
+dags/__pycache__/
+plugins/__pycache__/
+
+# Jupyter
+.ipynb_checkpoints
+notebooks/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+
+# Documentation
+*.md

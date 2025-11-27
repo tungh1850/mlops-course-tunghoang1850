@@ -1,0 +1,30 @@
+FROM apache/airflow:2.9.2
+
+USER root
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create workspace directory with correct permissions
+RUN mkdir -p /home/airflow/workspace && \
+    chown -R airflow:root /home/airflow/workspace && \
+    chmod -R 775 /home/airflow/workspace
+
+USER airflow
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    'dvc[s3]' \
+    mlflow \
+    boto3 \
+    scikit-learn \
+    pandas \
+    joblib \
+    pydantic \
+    seaborn \
+    matplotlib
+
+WORKDIR /home/airflow/workspace
