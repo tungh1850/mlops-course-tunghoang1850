@@ -38,3 +38,5 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+.env.local
+scripts/credit_score_model/artifacts/*.joblib
