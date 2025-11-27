@@ -19,6 +19,7 @@ src/utils/__pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+logs/
 
 # Jupyter
 .ipynb_checkpoints

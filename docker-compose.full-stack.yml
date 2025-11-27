@@ -187,21 +187,25 @@ services:
         condition: service_healthy
       create-buckets:
         condition: service_completed_successfully
-    command: >
-      /bin/bash -c "
-        pip install --no-cache-dir psycopg2-binary boto3 &&
-        mlflow server \
-          --backend-store-uri ${MLFLOW_BACKEND_STORE_URI} \
-          --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT} \
-          --host ${MLFLOW_HOST} \
-          --allowed-hosts ${MLFLOW_SERVER_ALLOWED_HOSTS} \
-          --port ${MLFLOW_PORT}
-      "
-
     environment:
       MLFLOW_S3_ENDPOINT_URL: http://minio:${MINIO_PORT}
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      MLFLOW_BACKEND_STORE_URI: ${MLFLOW_BACKEND_STORE_URI}
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: ${MLFLOW_DEFAULT_ARTIFACT_ROOT}
+      MLFLOW_HOST: ${MLFLOW_HOST}
+      MLFLOW_SERVER_ALLOWED_HOSTS: ${MLFLOW_SERVER_ALLOWED_HOSTS}
+      MLFLOW_PORT: ${MLFLOW_PORT}
+    command: >
+      /bin/bash -c "
+        pip install --no-cache-dir psycopg2-binary boto3 &&
+        mlflow server \
+          --backend-store-uri $$MLFLOW_BACKEND_STORE_URI \
+          --default-artifact-root $$MLFLOW_DEFAULT_ARTIFACT_ROOT \
+          --host $$MLFLOW_HOST \
+          --allowed-hosts $$MLFLOW_SERVER_ALLOWED_HOSTS \
+          --port $$MLFLOW_PORT
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${MLFLOW_PORT}/health"]
       interval: 30s
