@@ -10,11 +10,11 @@ services:
     volumes:
       - minio_data:/data
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:${MINIO_PORT}/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -25,20 +25,24 @@ services:
   airflow-postgres:
     image: postgres:13
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
+      POSTGRES_USER: ${AIRFLOW_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AIRFLOW_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AIRFLOW_POSTGRES_DB}
     volumes:
       - airflow_db:/var/lib/postgresql/data
+    # Optional: Expose port for debugging with external tools (pgAdmin, DBeaver, etc.)
+    # Uncomment the next 2 lines if you need to connect from host machine
+    # ports:
+    #   - "${AIRFLOW_POSTGRES_PORT:-5433}:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: ["CMD", "pg_isready", "-U", "${AIRFLOW_POSTGRES_USER}"]
       interval: 5s
       retries: 5
     networks:
       - mlops
 
   airflow-redis:
-    image: redis:7-alpine
+    image: redis:latest
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -47,21 +51,30 @@ services:
       - mlops
 
   airflow-init:
-    image: apache/airflow:2.7.1-python3.11
-    command: bash -c "airflow db init && airflow users create --username airflow --password airflow --firstname Admin --lastname User --role Admin --email admin@example.com"
+    image: apache/airflow:2.9.2
+    command: >
+      bash -c "
+        airflow db init && airflow users create \
+        --username airflow
+        --password airflow
+        --firstname Admin
+        --lastname User
+        --role Admin
+        --email admin@example.com"
     depends_on:
       - airflow-postgres
+      - airflow-redis
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/1
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: ${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
     networks:
       - mlops
 
   airflow-webserver:
-    image: apache/airflow:2.7.1-python3.11
+    image: apache/airflow:2.9.2
     command: webserver
     ports:
       - "8080:8080"
@@ -72,13 +85,12 @@ services:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
-      - .:/home/airflow/workspace
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/1
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: ${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -88,7 +100,7 @@ services:
       - mlops
 
   airflow-scheduler:
-    image: apache/airflow:2.7.1-python3.11
+    image: apache/airflow:2.9.2
     command: scheduler
     depends_on:
       - airflow-postgres
@@ -97,18 +109,17 @@ services:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
-      - .:/home/airflow/workspace
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/1
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: ${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
     networks:
       - mlops
 
   airflow-worker:
-    image: apache/airflow:2.7.1-python3.11
+    image: apache/airflow:2.9.2
     command: celery worker
     depends_on:
       - airflow-postgres
@@ -117,13 +128,12 @@ services:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
-      - .:/home/airflow/workspace
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/1
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: ${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
     networks:
       - mlops
 
@@ -131,13 +141,17 @@ services:
   mlflow-postgres:
     image: postgres:13
     environment:
-      POSTGRES_USER: mlflow
-      POSTGRES_PASSWORD: mlflow
-      POSTGRES_DB: mlflow
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD:-mlflow}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB:-mlflow}
     volumes:
       - mlflow_db:/var/lib/postgresql/data
+    # Optional: Expose port for debugging with external tools (pgAdmin, DBeaver, etc.)
+    # Uncomment the next 2 lines if you need to connect from host machine
+    # ports:
+    #   - "${MLFLOW_POSTGRES_PORT:-5434}:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "mlflow"]
+      test: ["CMD", "pg_isready", "-U", "${MLFLOW_POSTGRES_USER:-mlflow}"]
       interval: 5s
       retries: 5
     networks:
@@ -150,15 +164,16 @@ services:
     depends_on:
       - mlflow-postgres
       - minio
-    command: mlflow server
+    command: >
+      mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri postgresql://mlflow:mlflow@mlflow-postgres:5432/mlflow
+      --backend-store-uri postgresql://${MLFLOW_POSTGRES_USER:-mlflow}:${MLFLOW_POSTGRES_PASSWORD:-mlflow}@mlflow-postgres:5432/${MLFLOW_POSTGRES_DB:-mlflow}
       --artifacts-destination s3://mlflow-artifacts
     environment:
-      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      MLFLOW_S3_ENDPOINT_URL: http://minio:${MINIO_PORT}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
