@@ -1,0 +1,16 @@
+stages:
+  train:
+    cmd: python3 src/training/training_credit_risk_refactor.py
+    deps:
+      - src/training/training_credit_risk_refactor.py
+      - src/training/score_function.py
+      - data/facts_dataset.csv
+    params:
+      - train
+    outs:
+      - scripts/credit_score_model/artifacts/credit_risk_model.joblib:
+          desc: "Trained Logistic Regression model for credit risk prediction"
+      - scripts/credit_score_model/artifacts/confusion_matrix.png:
+          cache: false
+      - scripts/credit_score_model/artifacts/precision_recall_curve.png:
+          cache: false

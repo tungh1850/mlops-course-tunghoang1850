@@ -1,0 +1,6 @@
+[core]
+    remote = myremote
+['remote "myremote"']
+    url = s3://dvc-storage/data
+    # endpointurl is set via AWS_ENDPOINT_URL_S3 environment variable
+    # This works for both local (Docker) and cloud (Cloud Run) deployments

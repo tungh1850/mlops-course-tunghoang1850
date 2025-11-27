@@ -1,0 +1,38 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python3 src/training/training_credit_risk_refactor.py
+    deps:
+    - path: data/facts_dataset.csv
+      hash: md5
+      md5: 060e8561d236a5f0b8acbc2255da2476
+      size: 68380336
+      isexec: true
+    - path: src/training/score_function.py
+      hash: md5
+      md5: 0f8b303ddbf7a9cd55f527267fb00c48
+      size: 7094
+    - path: src/training/training_credit_risk_refactor.py
+      hash: md5
+      md5: dad387ef297bb288504280fdc4c0ec46
+      size: 12350
+    params:
+      params.yaml:
+        train:
+          n_estimators: 150
+          max_depth: 10
+          test_size: 0.2
+          random_state: 42
+    outs:
+    - path: scripts/credit_score_model/artifacts/confusion_matrix.png
+      hash: md5
+      md5: 85ee5a3c44b687b954edd87e4ea49779
+      size: 19226
+    - path: scripts/credit_score_model/artifacts/credit_risk_model.joblib
+      hash: md5
+      md5: 425b4b46fa585db5c44e892be4ee8be2
+      size: 7926
+    - path: scripts/credit_score_model/artifacts/precision_recall_curve.png
+      hash: md5
+      md5: a5f6b803993d8b6f95dafaf198d87f3b
+      size: 32711

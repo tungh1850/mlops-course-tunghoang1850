@@ -1,3 +1,42 @@
 .venv_ml
-notebooks/
-data/
+.venv_mlops
+notebooks/TNEX.ipynb
+.env
+
+# Data files (but allow DVC tracking files)
+/data/*
+!/data/.gitignore
+!/data/*.dvc
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+scr/__pycache__/
+src/router/__pycache__/
+src/services/__pycache__/
+src/models/__pycache__/
+src/utils/__pycache__/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+logs/
+
+# Jupyter
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.env.local
+scripts/credit_score_model/artifacts/*.joblib
