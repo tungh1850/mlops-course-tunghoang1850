@@ -1,6 +1,6 @@
 outs:
-- md5: 51f4b801f6a6a8c98fc5e1aca4e0a94a
-  size: 97242303
+- md5: 060e8561d236a5f0b8acbc2255da2476
+  size: 68380336
   hash: md5
   path: facts_dataset.csv
   isexec: true
