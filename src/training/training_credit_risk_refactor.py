@@ -42,7 +42,7 @@ logging.basicConfig(
 logger = logging.getLogger("credit_score_model_training")
 
 
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5050")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 mlflow.set_tracking_uri(uri=MLFLOW_TRACKING_URI)
 

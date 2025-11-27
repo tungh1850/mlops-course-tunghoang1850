@@ -1,8 +1,12 @@
 .venv_ml
 .venv_mlops
 notebooks/TNEX.ipynb
-data/
 .env
+
+# Data files (but allow DVC tracking files)
+/data/*
+!/data/.gitignore
+!/data/*.dvc
 
 # Python cache
 __pycache__/

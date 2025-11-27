@@ -51,7 +51,9 @@ with DAG(
             client = mlflow.tracking.MlflowClient()
 
             # Get latest experiment
-            experiment = client.get_experiment_by_name("credit_risk_v2")
+            experiment = client.get_experiment_by_name(
+                "credit_score_model_experiment_v2"
+            )
             if experiment:
                 runs = client.search_runs(
                     experiment_ids=[experiment.experiment_id],
@@ -60,8 +62,27 @@ with DAG(
                 )
                 if runs:
                     latest_run = runs[0]
-                    print(f"✓ Latest run: {latest_run.run_id}")
+                    print(f"✓ Latest run: {latest_run.info.run_id}")
                     print(f"  Metrics: {latest_run.data.metrics}")
+
+                    # Try to transition model to Production
+                    try:
+                        model_name = "credit_risk_FPD10_plus"
+                        versions = client.get_latest_versions(
+                            model_name, stages=["None"]
+                        )
+                        if versions:
+                            latest_version = versions[0].version
+                            client.transition_model_version_stage(
+                                name=model_name,
+                                version=latest_version,
+                                stage="Production",
+                            )
+                            print(
+                                f"✓ Model version {latest_version} promoted to Production"
+                            )
+                    except Exception as e:
+                        print(f"⚠ Model transition warning: {e}")
         except Exception as e:
             print(f"⚠ Model promotion warning: {e}")
 
@@ -102,11 +123,11 @@ with DAG(
         bash_command=f"""
         cd {DVC_REPO_PATH} && \
         export MLFLOW_TRACKING_URI={MLFLOW_TRACKING_URI} && \
-        echo "🚀 Training model..." && \
-        python src/training/train_pipeline.py && \
+        echo "🚀 Training model with refactored training script..." && \
+        python src/training/training_credit_risk_refactor.py && \
         echo "✓ Model training completed"
         """,
-        doc="""Train ML model and log experiments to MLflow""",
+        doc="""Train ML model with Logistic Regression and log experiments to MLflow""",
     )
 
     # Task 5: Push artifacts back to S3/MinIO
