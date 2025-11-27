@@ -78,6 +78,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             model_version=version,
             model_run_id=model_run_id,
         )
+        # some change
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         raise

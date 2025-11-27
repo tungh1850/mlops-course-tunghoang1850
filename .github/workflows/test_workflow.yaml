@@ -1,6 +1,6 @@
 name: Test Workflow
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
