@@ -67,13 +67,8 @@ services:
     image: apache/airflow:2.9.2
     command: >
       bash -c "
-        airflow db init && airflow users create \
-        --username airflow
-        --password airflow
-        --firstname Admin
-        --lastname User
-        --role Admin
-        --email admin@example.com"
+        airflow db init && airflow users create --username airflow --password airflow --firstname Admin --lastname User --role Admin --email admin@example.com
+      "
     depends_on:
       airflow-postgres:
         condition: service_healthy
@@ -193,17 +188,22 @@ services:
       create-buckets:
         condition: service_completed_successfully
     command: >
-      mlflow server
-      --host 0.0.0.0
-      --port 5000
-      --backend-store-uri postgresql://${MLFLOW_POSTGRES_USER:-mlflow}:${MLFLOW_POSTGRES_PASSWORD:-mlflow}@mlflow-postgres:5432/${MLFLOW_POSTGRES_DB:-mlflow}
-      --artifacts-destination s3://mlflow-artifacts
+      /bin/bash -c "
+        pip install --no-cache-dir psycopg2-binary boto3 &&
+        mlflow server \
+          --backend-store-uri ${MLFLOW_BACKEND_STORE_URI} \
+          --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT} \
+          --host ${MLFLOW_HOST} \
+          --allowed-hosts ${MLFLOW_SERVER_ALLOWED_HOSTS} \
+          --port ${MLFLOW_PORT}
+      "
+
     environment:
       MLFLOW_S3_ENDPOINT_URL: http://minio:${MINIO_PORT}
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${MLFLOW_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 5
