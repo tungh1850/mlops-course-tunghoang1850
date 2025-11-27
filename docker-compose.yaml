@@ -102,7 +102,7 @@ services:
   our-app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     container_name: our-app
     command: python3 src/predictapi.py
     ports:
@@ -116,3 +116,4 @@ services:
 networks:
   default:
     name: mlflow-network
+    external: true

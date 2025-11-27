@@ -8,6 +8,19 @@ echo "🧪 DVC + Airflow Pipeline Testing Script"
 echo "========================================="
 echo ""
 
+# Load environment variables for local DVC operations
+if [ -f .env.local ]; then
+    echo "📦 Loading environment variables from .env.local..."
+    export $(grep -v '^#' .env.local | xargs)
+    echo "✓ Environment configured (endpoint: $AWS_ENDPOINT_URL_S3)"
+else
+    echo "⚠️  .env.local not found. Using defaults..."
+    export AWS_ENDPOINT_URL_S3=http://localhost:9000
+    export AWS_ACCESS_KEY_ID=minioadmin
+    export AWS_SECRET_ACCESS_KEY=minioadmin
+    export AWS_DEFAULT_REGION=us-east-1
+fi
+
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -15,7 +28,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_DIR="/home/hoangtung/mlops/mlops_project/mlops-course-tunghoang1850"
+PROJECT_DIR="/home/tungh1850/learning/mls_ops/tnex/"
 DATA_FILE="data/facts_dataset.csv"
 BACKUP_FILE="data/facts_dataset_backup.csv"
 
@@ -48,6 +61,12 @@ if [ ! -f "$BACKUP_FILE" ]; then
     print_step "Backing up original dataset..."
     cp "$DATA_FILE" "$BACKUP_FILE"
     print_success "Backup created: $BACKUP_FILE"
+fi
+
+# Activate virtual environment if exists
+if [ -d ".venv_ml" ]; then
+    source .venv_ml/bin/activate
+    echo "✓ Virtual environment activated"
 fi
 
 # Menu

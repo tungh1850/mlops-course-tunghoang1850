@@ -112,6 +112,9 @@ services:
       AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ENDPOINT_URL_S3: http://${MINIO_HOST:-minio}:${MINIO_PORT}
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -143,6 +146,9 @@ services:
       AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ENDPOINT_URL_S3: http://${MINIO_HOST:-minio}:${MINIO_PORT}
     networks:
       - mlops
 
@@ -169,6 +175,9 @@ services:
       AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ENDPOINT_URL_S3: http://${MINIO_HOST:-minio}:${MINIO_PORT}
     networks:
       - mlops
 
@@ -219,10 +228,30 @@ services:
           --port $$MLFLOW_PORT
       "
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${MLFLOW_PORT}/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${MLFLOW_PORT}/health')"]
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - mlops
+
+  # ============ Prediction API ============
+  our-app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: our-app
+    command: python3 src/predictapi.py
+    ports:
+      - "8000:8000"
+    depends_on:
+      mlflow-server:
+        condition: service_healthy
+    environment:
+      OUR_MLFLOW_HOST: ${OUR_MLFLOW_HOST}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:${MINIO_PORT}
     networks:
       - mlops
 

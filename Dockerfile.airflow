@@ -20,16 +20,11 @@ RUN mkdir -p /home/airflow/workspace && \
 USER airflow
 
 # Install Python dependencies
-RUN pip install --no-cache-dir \
-    'dvc[s3]' \
-    mlflow \
-    boto3 \
-    scikit-learn \
-    pandas \
-    numpy \
-    joblib \
-    python-dotenv \
-    pydantic
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Verify DVC and MLflow installation
+RUN dvc version && python -c "import mlflow; print(f'MLflow version: {mlflow.__version__}')"
 
 # Set entrypoint
 USER root

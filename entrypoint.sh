@@ -23,5 +23,12 @@ fi
 
 echo "✅ Permissions setup complete"
 
-# Execute the original command
-exec "$@"
+# DVC will automatically use AWS_ENDPOINT_URL_S3 environment variable
+# No need to create config.local anymore
+
+# Execute the original command with airflow prefix if needed
+if [ "$1" = "webserver" ] || [ "$1" = "scheduler" ] || [ "$1" = "worker" ] || [ "$1" = "celery" ]; then
+    exec airflow "$@"
+else
+    exec "$@"
+fi
