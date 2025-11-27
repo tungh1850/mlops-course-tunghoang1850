@@ -64,7 +64,10 @@ services:
       - mlops
 
   airflow-init:
-    image: apache/airflow:2.9.2
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: airflow-mlops:latest
     command: >
       bash -c "
         airflow db init && airflow users create --username airflow --password airflow --firstname Admin --lastname User --role Admin --email admin@example.com
@@ -85,7 +88,9 @@ services:
       - mlops
 
   airflow-webserver:
-    image: apache/airflow:2.9.2
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
     command: webserver
     ports:
       - "8080:8080"
@@ -116,7 +121,9 @@ services:
       - mlops
 
   airflow-scheduler:
-    image: apache/airflow:2.9.2
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
     command: scheduler
     depends_on:
       airflow-postgres:
@@ -140,7 +147,9 @@ services:
       - mlops
 
   airflow-worker:
-    image: apache/airflow:2.9.2
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
     command: celery worker
     depends_on:
       airflow-postgres:
