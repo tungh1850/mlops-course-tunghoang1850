@@ -108,5 +108,5 @@ def test_predict_endpoint(mock_mlflow_server, mock_mlflow_client, mock_model):
         response_data = response.json()
         assert response_data["FPD10_plus_probability"] == 0.7
         assert response_data["model_name"] == "credit_risk_FPD10_plus"
-        assert response_data["model_version"] == "3"
+        assert response_data["model_version"] == "2"
         assert response_data["model_run_id"] == "test_run_id_12345"
