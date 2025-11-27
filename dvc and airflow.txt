@@ -1,0 +1,673 @@
+A Comprehensive Guide to DVC and Airflow for Data Pipelines
+This document provides a complete walkthrough for setting up and using DVC (Data Version Control) and Apache Airflow to create robust, reproducible data pipelines.
+Part 1: The Purpose of DVC
+What is DVC?
+DVC (Data Version Control) is an open-source tool designed to bring version control to data, similar to how Git versions code.
+The Problem DVC Solves:
+* Git is for code: Git is fantastic at tracking changes in text-based code files, but it's terrible at handling large files (like datasets, models, or media). Storing large files in Git bloats the repository, making it slow and unmanageable.
+* Data is messy: Data changes, models are retrained, and it's often difficult to answer questions like:
+   * "Which dataset was used to train this specific model version?"
+   * "How do I get the exact data I had three weeks ago for a specific experiment?"
+   * "How can my teammate reproduce my results exactly?"
+How DVC Works:
+DVC works alongside Git. It doesn't replace it.
+1. DVC Manages Data: When you dvc add a large file, DVC moves the file to a central cache (outside your Git repo) and creates a tiny pointer file (e.g., data.csv.dvc).
+2. Git Manages Pointers: This small .dvc pointer file (which is just text) is committed to Git.
+3. Remote Storage: DVC pushes the actual data from its cache to a remote storage location, such as Google Drive, S3, Azure Blob, or an SSH server.
+Key Benefits:
+* Reproducibility: By checking out a Git commit, you get the code and the DVC pointers for that version. Running dvc pull then downloads the exact data files associated with that version.
+* Lightweight Repos: Your Git repository remains small and fast.
+* Storage Agnostic: Easily swap your remote storage (e.g., move from GDrive to S3) without breaking your workflow.
+* Pipeline Definition: DVC can also define and version data processing pipelines (dvc.yaml), tracking dependencies (data, code) and outputs.
+Part 2: DVC Installation
+DVC is a Python package. Installation is best done using pip.
+# Install the base dvc package
+pip install dvc
+
+# To use DVC with specific remote storage, you must install the extras.
+# For Google Drive:
+pip install dvc[gdrive]
+
+# For S3 (which also works for MinIO):
+pip install dvc[s3]
+
+# For all remotes:
+pip install dvc[all]
+
+Part 3: Setup DVC with Google Drive
+This is a great way to start, as it uses your existing Google account for storage.
+Prerequisites:
+1. Install DVC with GDrive support: pip install dvc[gdrive]
+2. Create a folder in your Google Drive (e.g., "My DVC Project").
+3. Get the Folder ID from the URL. If the URL is https://drive.google.com/drive/folders/1aBcDeF_gHiJkLmNoPqRsTuVwXyZ, the ID is 1aBcDeF_gHiJkLmNoPqRsTuVwXyZ.
+Example Workflow:
+# 1. Create a new project directory
+mkdir my-project
+cd my-project
+
+# 2. Initialize Git and DVC
+git init
+dvc init
+
+# 3. Add Google Drive as the default remote storage
+# Replace <YOUR_FOLDER_ID> with your actual GDrive folder ID
+dvc remote add -d gdrive gdrive://1aBcDeF_gHiJkLmNoPqRsTuVwXyZ
+
+# 4. Create some dummy data
+mkdir data
+echo "id,value" > data/my_data.csv
+echo "1,100" >> data/my_data.csv
+echo "2,200" >> data/my_data.csv
+
+# 5. Track the data file with DVC
+dvc add data/my_data.csv
+
+# This does two things:
+# - Creates `data/my_data.csv.dvc` (the pointer file)
+# - Adds `data/my_data.csv` to `.gitignore` so Git ignores the large file
+
+# 6. Commit the pointer file to Git
+git add data/my_data.csv.dvc .gitignore
+git commit -m "Track initial dataset"
+
+# 7. Push the data to Google Drive
+# The first time you run this, DVC will open a browser
+# to ask for authentication with your Google account.
+dvc push
+
+# 8. (Optional) Simulate a fresh clone
+cd ..
+git clone ./my-project ./new-clone
+cd ./new-clone
+
+# You'll see `data/my_data.csv` is missing (or is just a pointer)
+# Now, pull the data from Google Drive:
+dvc pull
+
+# The file `data/my_data.csv` is now present and correct!
+
+Part 4: DVC with MinIO (S3 Mimic)
+For local development and testing, MinIO is perfect. It's a high-performance, S3-compatible object storage server you can run locally.
+4.1: Docker Compose for MinIO
+Create a file named docker-compose.minio.yml:
+version: '3.7'
+
+services:
+ minio:
+   image: minio/minio
+   ports:
+     - "9000:9000"  # API port
+     - "9001:9001"  # Console (Web UI) port
+   volumes:
+     - minio_data:/data
+   environment:
+     MINIO_ROOT_USER: minioadmin      # Your Access Key
+     MINIO_ROOT_PASSWORD: minioadmin  # Your Secret Key
+   command: server /data --console-address ":9001"
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+     interval: 30s
+     timeout: 20s
+     retries: 3
+
+volumes:
+ minio_data:
+
+To run MinIO:
+1. Save the file.
+2. Run docker-compose -f docker-compose.minio.yml up -d
+3. Access the MinIO console at http://localhost:9001.
+4. Log in with minioadmin / minioadmin.
+5. Create a new bucket (e.g., dvc-storage).
+4.2: Using MinIO with DVC
+Prerequisites:
+1. Install DVC with S3 support: pip install dvc[s3]
+Setup Workflow:
+# In your DVC project (from Part 3, or a new one)
+
+# 1. Add the MinIO S3 remote
+# Note: 's3://dvc-storage' refers to the bucket name you created
+dvc remote add -d my-minio-remote s3://dvc-storage
+
+# 2. Modify the remote to point to your local MinIO server
+dvc remote modify my-minio-remote endpointurl http://localhost:9000
+
+# 3. Set your credentials (Access Key and Secret Key)
+# We set them --local so they are NOT committed to Git
+dvc config --local s3.access_key_id minioadmin
+dvc config --local s3.secret_access_key minioadmin
+dvc config --local s3.use_ssl false # Important: use http, not https
+
+# 4. Set MinIO as the default remote (optional, but convenient)
+dvc config core.remote my-minio-remote
+
+# 5. Add another file and push it to MinIO
+echo "more test data" > data/another_file.txt
+dvc add data/another_file.txt
+dvc push
+
+# 6. Commit the new pointer file
+git add data/another_file.txt.dvc
+git commit -m "Add another file, stored in MinIO"
+
+# You can now go to http://localhost:9001, browse your 'dvc-storage'
+# bucket, and see the data stored in the 'files/md5' directory.
+
+Part 5: DVC for Data Pipelines
+DVC can also define and track multi-stage data pipelines. This is done in a dvc.yaml file. DVC builds a Directed Acyclic Graph (DAG) of your pipeline, tracks dependencies, and knows which stages to re-run if a dependency changes.
+5.1: Example: Data Versioning Pipeline
+Let's create a simple pipeline that takes raw data, cleans it, and saves the output.
+1. Create a processing script (preprocess.py):
+# preprocess.py
+import sys
+import pandas as pd
+
+if len(sys.argv) != 3:
+   print("Usage: python preprocess.py <input_file> <output_file>")
+   sys.exit(1)
+
+input_file = sys.argv[1]
+output_file = sys.argv[2]
+
+print(f"Processing {input_file}...")
+df = pd.read_csv(input_file)
+df_cleaned = df.dropna() # Example: drop rows with nulls
+df_cleaned['value_doubled'] = df_cleaned['value'] * 2
+
+print(f"Saving cleaned data to {output_file}...")
+df_cleaned.to_csv(output_file, index=False)
+
+2. Define the pipeline in dvc.yaml:
+DVC provides a command to help build this file. We'll use dvc stage add.
+# We'll use the 'my_data.csv' from Part 3
+# Ensure you've pulled it first: dvc pull data/my_data.csv.dvc
+
+# Create the pipeline stage
+dvc stage add -n preprocess \
+             -p params.yaml:doubler_config.multiply_by \
+             -d preprocess.py \
+             -d data/my_data.csv \
+             -o data/cleaned_data.csv \
+             "python preprocess.py data/my_data.csv data/cleaned_data.csv"
+
+# This command creates/updates `dvc.yaml` and `dvc.lock`
+# -n: Name of the stage
+# -d: Dependencies (code or data)
+# -o: Outputs (data)
+# "..." The command to run
+
+Your dvc.yaml will look something like this:
+stages:
+ preprocess:
+   cmd: python preprocess.py data/my_data.csv data/cleaned_data.csv
+   deps:
+   - data/my_data.csv
+   - preprocess.py
+   outs:
+   - data/cleaned_data.csv
+
+3. Run the pipeline:
+dvc repro
+
+# This command:
+# 1. Checks the hashes of all dependencies (deps)
+# 2. If any hash has changed since the last `dvc repro`, it re-runs the cmd.
+# 3. If not, it does nothing.
+# 4. After running, it updates `dvc.lock` with the new output hashes.
+
+4. Commit the result:
+# Add the new output pointer and the pipeline definition
+git add data/cleaned_data.csv.dvc dvc.yaml dvc.lock
+
+# (You'll also want to add preprocess.py)
+git add preprocess.py
+git commit -m "Create preprocessing pipeline"
+
+# Push the new data output to your remote
+dvc push
+
+Now, if you change preprocess.py (e.g., multiply by 3 instead of 2) or if data/my_data.csv changes (e.g., dvc pull a new version), dvc repro will automatically detect it and re-run your preprocess stage.
+5.2: Example: DVC with BigQuery
+DVC is not designed to version a live, running database like BigQuery. Instead, you version data exports (snapshots) from the database or the queries that produce them.
+The best practice is to create a pipeline stage that fetches data from BigQuery and saves it as a file (e.g., .csv or .parquet), which DVC can then track.
+1. Create a script (fetch_bq.py):
+# fetch_bq.py
+# You'll need: pip install google-cloud-bigquery pandas
+import sys
+from google.cloud import bigquery
+import pandas as pd
+
+output_file = sys.argv[1]
+project_id = "your-gcp-project-id" # Should be in env or config
+client = bigquery.Client(project=project_id)
+
+sql = """
+   SELECT *
+   FROM `bigquery-public-data.usa_names.usa_1910_2013`
+   WHERE state = 'NY'
+   LIMIT 1000
+"""
+
+print("Running query on BigQuery...")
+df = client.query(sql).to_dataframe()
+
+print(f"Saving data to {output_file}...")
+df.to_parquet(output_file, index=False)
+
+2. Define the DVC stage:
+# Note: We add `fetch_bq.py` as a dependency.
+# We also track the `sql` query itself. We can do this
+# by putting the query in a `query.sql` file and adding
+# `-d query.sql`
+dvc stage add -n fetch_bq_data \
+             -d fetch_bq.py \
+             -o data/bq_export.parquet \
+             "python fetch_bq.py data/bq_export.parquet"
+
+# Run the pipeline
+dvc repro
+
+# Commit and push the results
+git add dvc.yaml dvc.lock fetch_bq.py data/bq_export.parquet.dvc
+git commit -m "Add pipeline for fetching BQ data"
+dvc push
+
+This gives you a reproducible snapshot of your database data, versioned and tied to your Git history.
+Part 6: Airflow for Orchestration
+What is Airflow?
+Apache Airflow is an open-source platform to programmatically author, schedule, and monitor workflows. It's an orchestrator.
+The Purpose of Airflow:
+While DVC defines what to run and when (i.e., when dependencies change), Airflow defines how and where to run it on a schedule.
+* Scheduling: Run a pipeline every night at 3 AM.
+* Dependencies: Don't start the model training task until both the data cleaning and feature engineering tasks have finished.
+* Monitoring: Get alerts, view logs, and see a UI of your pipeline's status.
+* Retries: Automatically retry a task if it fails.
+* Scalability: Distribute tasks across a cluster of workers.
+DVC vs. Airflow:
+* DVC: dvc repro is for reproducibility. It's often run manually during development.
+* Airflow: Is for production orchestration. An Airflow DAG (workflow) can be set up to call dvc repro as one of its tasks.
+6.1: Setup Airflow with Docker Compose (and MinIO)
+We'll use the official Airflow Docker Compose file and add our MinIO service to it. This way, Airflow can talk to MinIO.
+1. Get the Airflow Docker Compose:
+curl -LfO '[https://airflow.apache.org/docs/apache-airflow/2.9.2/docker-compose.yaml](https://airflow.apache.org/docs/apache-airflow/2.9.2/docker-compose.yaml)'
+
+(Note: Check the Airflow docs for the latest stable version)
+2. Create necessary directories and files:
+mkdir -p ./dags ./logs ./plugins ./config
+echo -e "AIRFLOW_UID=$(id -u)" > .env
+
+3. Initialize the database:
+docker-compose up airflow-init
+
+4. Edit the docker-compose.yaml:
+Open the docker-compose.yaml you downloaded.
+   * Add the MinIO service: Copy the minio service definition from docker-compose.minio.yml (Part 4.1) and paste it under the services: block.
+   * Add the MinIO volume: Copy the minio_data volume definition and paste it under the volumes: block at the end of the file.
+   * Add network: Ensure the minio service is on the same network as the Airflow services. Add networks: [default] to the minio service definition.
+Your additions will look like this:# ... (all the existing Airflow services: postgres, redis, airflow-webserver, etc.)
+
+services:
+ # ... (all airflow services) ...
+
+ minio:
+   image: minio/minio
+   ports:
+     - "9000:9000"  # API port
+     - "9001:9001"  # Console (Web UI) port
+   volumes:
+     - minio_data:/data
+   environment:
+     MINIO_ROOT_USER: minioadmin
+     MINIO_ROOT_PASSWORD: minioadmin
+   command: server /data --console-address ":9001"
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+     interval: 30s
+     timeout: 20s
+     retries: 3
+   networks: # <-- Add this!
+     - default
+
+# ... (at the very end of the file)
+volumes:
+ # ... (existing airflow volumes)
+ minio_data:
+
+   5. Start all services:
+docker-compose up -d
+
+You now have Airflow running (at http://localhost:8080, user/pass: airflow/airflow) and MinIO running (at http://localhost:9001).
+6.2: Create an Airflow Pipeline (DAG) with DVC
+This DAG will orchestrate our DVC pipeline.
+Challenge: The default Airflow worker container doesn't have Git or DVC installed.
+      * Simple (but less ideal) way: Use BashOperator and pip install DVC inside the script.
+      * Production way: Build a custom Docker image FROM apache/airflow and add your pip install dvc[s3] and git commands, then update docker-compose.yaml to use your custom image.
+For this example, we'll show the BashOperator flow. We also need to get our DVC project code into the DAG. We can do this by git clone-ing it.
+1. Set up Airflow S3 (MinIO) Connection:
+      * Go to the Airflow UI: http://localhost:8080
+      * Go to Admin -> Connections -> Add a new record.
+      * Conn Id: my_minio_s3
+      * Conn Type: S3
+      * Login: minioadmin (your Access Key)
+      * Password: minioadmin (your Secret Key)
+      * Extra: {"host": "http://minio:9000", "aws_session_token": null}
+      * Note: We use minio as the hostname, not localhost, because the services are communicating inside the Docker network.
+2. Create the DAG file (dags/dvc_example_dag.py):
+import os
+from datetime import datetime
+from airflow.decorators import dag, task
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+
+# This is the Git repo containing your DVC project
+DVC_PROJECT_REPO = "[https://github.com/your-username/my-project.git](https://github.com/your-username/my-project.git)"
+PROJECT_DIR = "/tmp/my-project"
+
+@dag(
+   dag_id="dvc_pipeline_example",
+   start_date=datetime(2025, 1, 1),
+   schedule=None,
+   catchup=False,
+   tags=["dvc", "example"],
+)
+def dvc_pipeline_dag():
+   """
+   An Airflow DAG to orchestrate a DVC pipeline.
+
+   This DAG does the following:
+   1. Sets up S3 credentials for DVC.
+   2. Clones or pulls the latest DVC project code from Git.
+   3. Pulls the DVC-tracked data from MinIO (S3).
+   4. Runs the DVC pipeline.
+   5. Pushes the new/changed data back to MinIO.
+   6. (Optional) Commits and pushes dvc.lock to Git.
+   """
+
+   @task
+   def setup_dvc_s3_credentials():
+       """
+       Pulls S3 credentials from Airflow Connections and
+       sets them as environment variables for DVC.
+       """
+       # Use the S3Hook to get credentials from the connection
+       s3_hook = S3Hook(aws_conn_id='my_minio_s3')
+       creds = s3_hook.get_credentials()
+
+       # Set env vars that DVC[s3] will automatically pick up
+       os.environ["AWS_ACCESS_KEY_ID"] = creds.access_key
+       os.environ["AWS_SECRET_ACCESS_KEY"] = creds.secret_key
+
+       # DVC also needs to know the endpoint
+       # We get this from the 'host' in the connection's 'Extra' field
+       os.environ["AWS_ENDPOINT_URL"] = s3_hook.conn.extra_dejson.get('host')
+       os.environ["DVC_S3_USE_SSL"] = "false" # Use HTTP for MinIO
+
+       print("DVC S3 credentials configured.")
+
+
+   @task(task_id="clone_or_pull_project_repo")
+   def clone_or_pull_repo():
+       """
+       Clones the project repo if it doesn't exist,
+       or pulls the latest changes if it does.
+       """
+       import subprocess
+
+       # Install git and dvc if not present (for demo)
+       # In production, use a custom Docker image
+       subprocess.run("pip install dvc[s3] git-python", shell=True, check=True)
+
+       if not os.path.exists(PROJECT_DIR):
+           print(f"Cloning {DVC_PROJECT_REPO}...")
+           subprocess.run(
+               f"git clone {DVC_PROJECT_REPO} {PROJECT_DIR}",
+               shell=True,
+               check=True
+           )
+       else:
+           print("Repo exists, pulling latest changes...")
+           subprocess.run(
+               f"cd {PROJECT_DIR} && git pull",
+               shell=True,
+               check=True
+           )
+       return PROJECT_DIR
+
+   @task
+   def dvc_pull_data(project_dir: str):
+       """Runs dvc pull"""
+       import subprocess
+       print("Running dvc pull...")
+       # We use 'dvc pull -r my-minio-remote' to be explicit
+       # The remote 'my-minio-remote' is defined in .dvc/config in the repo
+       subprocess.run(
+           f"cd {project_dir} && dvc pull",
+           shell=True,
+           check=True
+       )
+
+   @task
+   def dvc_run_pipeline(project_dir: str):
+       """Runs dvc repro"""
+       import subprocess
+       print("Running dvc repro...")
+       subprocess.run(
+           f"cd {project_dir} && dvc repro",
+           shell=True,
+           check=True
+       )
+
+   @task
+   def dvc_push_data(project_dir: str):
+       """Runs dvc push"""
+       import subprocess
+       print("Running dvc push...")
+       subprocess.run(
+           f"cd {project_dir} && dvc push",
+           shell=True,
+           check=True
+       )
+
+   # Define the task dependencies
+   creds = setup_dvc_s3_credentials()
+   project_dir = clone_or_pull_repo()
+
+   # Credentials must be set before any dvc/git tasks
+   # Project must be cloned before dvc tasks
+   project_dir.set_upstream(creds)
+
+   pull_data = dvc_pull_data(project_dir)
+   run_pipeline = dvc_run_pipeline(pull_data)
+   dvc_push_data(run_pipeline)
+
+# Instantiate the DAG
+dvc_pipeline_dag()
+
+Save this file in your dags folder, and it will appear in the Airflow UI.
+Part 7: The Big Picture: Airflow + DVC + MLflow
+This is the full MLOps stack. Here's how they work together:
+      * DVC: Versions data and large model files. Stores them in MinIO.
+      * MLflow: Tracks experiments (parameters, metrics) and logs model metadata. It can also use MinIO as its "Artifact Store" to save model files.
+      * Airflow: Orchestrates the entire end-to-end process:
+      1. (Airflow) Triggers DAG on a schedule.
+      2. (Airflow Task) Runs dvc pull to get the latest production data (from MinIO).
+      3. (Airflow Task) Runs dvc repro to run the data processing pipeline.
+      4. (Airflow Task) Runs a Python script train.py.
+      5. (train.py) Script uses mlflow.start_run() to log parameters and metrics to the MLflow Server.
+      6. (train.py) Script saves the trained model (e.g., model.pkl) using mlflow.sklearn.log_model().
+      7. (MLflow) MLflow saves the model file to MinIO (its artifact store).
+      8. (Airflow Task) (Optional) A final task could use the MLflow API to promote the best model to "Production".
+Full-Stack Docker Compose (docker-compose.full-stack.yml)
+This file combines Airflow, MinIO, and a dedicated MLflow server (with its own Postgres DB for tracking).
+version: '3.7'
+
+services:
+ # --- MinIO Service (for DVC and MLflow Artifacts) ---
+ minio:
+   image: minio/minio
+   ports:
+     - "9000:9000"  # API
+     - "9001:9001"  # Console
+   volumes:
+     - minio_data:/data
+   environment:
+     MINIO_ROOT_USER: minioadmin
+     MINIO_ROOT_PASSWORD: minioadmin
+   command: server /data --console-address ":9001"
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+     interval: 30s
+     timeout: 20s
+     retries: 3
+
+ # --- Airflow Services ---
+ airflow-postgres:
+   image: postgres:13
+   environment:
+     - POSTGRES_USER=airflow
+     - POSTGRES_PASSWORD=airflow
+     - POSTGRES_DB=airflow
+   volumes:
+     - airflow_db:/var/lib/postgresql/data
+   healthcheck:
+     test: ["CMD", "pg_isready", "-U", "airflow"]
+     interval: 5s
+     retries: 5
+
+ airflow-redis:
+   image: redis:latest
+   healthcheck:
+     test: ["CMD", "redis-cli", "ping"]
+     interval: 5s
+     retries: 5
+
+ airflow-webserver:
+   image: apache/airflow:2.9.2 # Use a specific version
+   command: webserver
+   ports:
+     - "8080:8080"
+   depends_on:
+     - airflow-postgres
+     - airflow-redis
+   volumes:
+     - ./dags:/opt/airflow/dags
+     - ./logs:/opt/airflow/logs
+     - ./plugins:/opt/airflow/plugins
+   environment:
+     - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+     - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__BROKER_URL=redis://airflow-redis:6379/1
+     - AIRFLOW__CORE__LOAD_EXAMPLES=False
+   healthcheck:
+     test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+     interval: 30s
+     timeout: 10s
+     retries: 5
+
+ airflow-scheduler:
+   image: apache/airflow:2.9.2
+   command: scheduler
+   depends_on:
+     - airflow-postgres
+     - airflow-redis
+   volumes:
+     - ./dags:/opt/airflow/dags
+     - ./logs:/opt/airflow/logs
+     - ./plugins:/opt/airflow/plugins
+   environment:
+     - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+     - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__BROKER_URL=redis://airflow-redis:6379/1
+     - AIRFLOW__CORE__LOAD_EXAMPLES=False
+
+ airflow-worker:
+   image: apache/airflow:2.9.2
+   command: celery worker
+   depends_on:
+     - airflow-postgres
+     - airflow-redis
+   volumes:
+     - ./dags:/opt/airflow/dags
+     - ./logs:/opt/airflow/logs
+     - ./plugins:/opt/airflow/plugins
+   environment:
+     - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+     - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__BROKER_URL=redis://airflow-redis:6379/1
+     - AIRFLOW__CORE__LOAD_EXAMPLES=False
+
+ airflow-init:
+   image: apache/airflow:2.9.2
+   command: bash -c "airflow db init && airflow users create --username airflow --password airflow --firstname Anonymous --lastname User --role Admin --email admin@example.org"
+   depends_on:
+     - airflow-postgres
+     - airflow-redis
+   environment:
+     - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+     - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@airflow-postgres/airflow
+     - AIRFLOW__CELERY__BROKER_URL=redis://airflow-redis:6379/1
+     - AIRFLOW__CORE__LOAD_EXAMPLES=False
+
+ # --- MLflow Services ---
+ mlflow-postgres:
+   image: postgres:13
+   ports:
+     - "5433:5432" # Use a different host port if 5432 is taken
+   volumes:
+     - mlflow_db:/var/lib/postgresql/data
+   environment:
+     - POSTGRES_USER=mlflow
+     - POSTGRES_PASSWORD=mlflow
+     - POSTGRES_DB=mlflow
+   healthcheck:
+     test: ["CMD", "pg_isready", "-U", "mlflow"]
+     interval: 5s
+     retries: 5
+
+ mlflow-server:
+   image: ghcr.io/mlflow/mlflow:v2.13.0 # Use a specific version
+   ports:
+     - "5001:5000" # Use 5001 on host to avoid conflict with Python apps
+   depends_on:
+     - mlflow-postgres
+     - minio
+   command: >
+     mlflow server
+     --host 0.0.0.0
+     --port 5000
+     --backend-store-uri postgresql://mlflow:mlflow@mlflow-postgres:5432/mlflow
+     --artifacts-destination s3://mlflow-artifacts
+   environment:
+     # Credentials for MLflow to talk to MinIO (S3)
+     - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+     - AWS_ACCESS_KEY_ID=minioadmin
+     - AWS_SECRET_ACCESS_KEY=minioadmin
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+     interval: 30s
+     timeout: 10s
+     retries: 5
+
+volumes:
+ minio_data:
+ airflow_db:
+ mlflow_db:
+ airflow_logs:
+
+To run this full stack:
+      1. Save the file as docker-compose.full-stack.yml.
+      2. Create the dags, logs, plugins directories.
+      3. Go to http://localhost:9001 (MinIO) and create two buckets:
+      * dvc-storage (for DVC)
+      * mlflow-artifacts (for MLflow)
+      4. Run docker-compose -f docker-compose.full-stack.yml up -d airflow-init.
+      5. Wait for it to finish, then run docker-compose -f docker-compose.full-stack.yml up -d
+      6.  docker-compose -f docker-compose.yml up -d airflow-init.
+You will have:
+      * MinIO: http://localhost:9001
+      * Airflow: http://localhost:8080
+      * MLflow: http://localhost:5001
+Your Airflow DAGs can now use dvc (with credentials from my_minio_s3 connection) to pull/push from s3://dvc-storage and use mlflow (by setting MLFLOW_TRACKING_URI=http://mlflow-server:5000) to log experiments to the MLflow server, which in turn stores artifacts in s3://mlflow-artifacts.

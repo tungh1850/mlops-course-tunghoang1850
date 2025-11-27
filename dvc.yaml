@@ -1,0 +1,29 @@
+stages:
+  prepare_data:
+    cmd: python src/training/prepare_data.py
+    deps:
+      - src/training/prepare_data.py
+      - data/facts_dataset.csv
+    params:
+      - preprocess.missing_value_strategy
+      - preprocess.scaling
+    outs:
+      - data/processed:
+          persist: true
+
+  train:
+    cmd: python src/training/train_pipeline.py
+    deps:
+      - src/training/train_pipeline.py
+      - data/facts_dataset.csv
+      - params.yaml
+    params:
+      - train.n_estimators
+      - train.max_depth
+      - train.test_size
+    metrics:
+      - scripts/credit_score_model/artifacts/metrics.json:
+          cache: false
+    outs:
+      - scripts/credit_score_model/artifacts/credit_risk_model.joblib:
+          desc: "Trained Random Forest model for credit risk prediction"
